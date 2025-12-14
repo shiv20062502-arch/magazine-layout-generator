@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magazine Layout Generator - Split & Print Large Images</title>
+    <title>Magazine Layout Generator - Custom Split Control</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
@@ -166,6 +166,15 @@
             background: #e5e5e5;
         }
 
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #059669;
+        }
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -229,11 +238,94 @@
             opacity: 0.3;
         }
 
-        .uploaded-image {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        /* Interactive Canvas */
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            margin: 20px auto;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            max-width: 100%;
+        }
+
+        #interactiveCanvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            cursor: crosshair;
+        }
+
+        .split-line {
+            position: absolute;
+            background: rgba(37, 99, 235, 0.6);
+            z-index: 10;
+            cursor: move;
+            transition: background 0.2s;
+        }
+
+        .split-line:hover {
+            background: rgba(37, 99, 235, 0.9);
+        }
+
+        .split-line.horizontal {
+            height: 3px;
+            width: 100%;
+            left: 0;
+        }
+
+        .split-line.vertical {
+            width: 3px;
+            height: 100%;
+            top: 0;
+        }
+
+        .split-line .handle {
+            position: absolute;
+            background: white;
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .split-line.horizontal .handle {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .split-line.vertical .handle {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .split-line .label {
+            position: absolute;
+            background: var(--accent);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .split-line.horizontal .label {
+            left: 10px;
+            top: -25px;
+        }
+
+        .split-line.vertical .label {
+            top: 10px;
+            left: 10px;
         }
 
         .pages-grid {
@@ -329,40 +421,6 @@
             color: var(--accent);
         }
 
-        .split-preview-container {
-            margin: 20px 0;
-            padding: 20px;
-            background: var(--secondary);
-            border-radius: 8px;
-        }
-
-        .split-preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .split-preview-item {
-            border: 2px solid var(--border);
-            border-radius: 4px;
-            padding: 8px;
-            background: white;
-            text-align: center;
-        }
-
-        .split-preview-item canvas {
-            width: 100%;
-            height: auto;
-            border-radius: 4px;
-        }
-
-        .split-preview-item .label {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            margin-top: 5px;
-        }
-
         .magazine-viewer {
             margin-top: 30px;
             padding: 30px;
@@ -373,7 +431,6 @@
         .flipbook-container {
             max-width: 900px;
             margin: 0 auto;
-            perspective: 2000px;
         }
 
         .page-display {
@@ -445,18 +502,57 @@
             margin-right: 10px;
         }
 
+        .instruction-box {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 0.85rem;
+            color: #92400e;
+        }
+
+        .instruction-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
         footer {
             text-align: center;
             padding: 40px 20px;
             color: var(--text-light);
             font-size: 0.9rem;
         }
+
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .mode-toggle button {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .mode-toggle button.active {
+            border-color: var(--accent);
+            background: #f0f7ff;
+            color: var(--accent);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>📖 Magazine Page Splitter</h1>
-        <p class="subtitle">Upload one large image and split it into printable magazine pages</p>
+        <h1>✂️ Magazine Page Splitter</h1>
+        <p class="subtitle">Upload, adjust cuts manually, and create printable magazine pages</p>
     </header>
 
     <div class="container">
@@ -473,52 +569,48 @@
                     <div id="imageInfo" class="image-info" style="display: none;"></div>
                 </div>
 
-                <div class="section">
+                <div class="section" id="splitModeSection" style="display: none;">
+                    <h2 class="section-title">🎯 Split Mode</h2>
+                    <div class="mode-toggle">
+                        <button id="autoModeBtn" class="active">Auto Split</button>
+                        <button id="manualModeBtn">Manual Cut</button>
+                    </div>
+                    <p class="help-text" id="modeHelp">Automatic even splitting</p>
+                </div>
+
+                <div class="section" id="autoSettings">
                     <h2 class="section-title">📏 Magazine Size</h2>
                     <select id="sizeSelect">
                         <option value="a4">A4 (210 × 297 mm)</option>
                         <option value="a5">A5 (148 × 210 mm)</option>
                         <option value="letter">US Letter (8.5 × 11 in)</option>
                     </select>
-                    <p class="help-text">Choose your print paper size</p>
-                </div>
 
-                <div class="section">
-                    <h2 class="section-title">✂️ Split Direction</h2>
+                    <h2 class="section-title" style="margin-top: 20px;">✂️ Split Direction</h2>
                     <div class="radio-group">
                         <label class="radio-option selected">
                             <input type="radio" name="direction" value="vertical" checked>
                             <div>
-                                <strong>Vertical Split</strong>
-                                <div class="help-text">Top to bottom (for tall images)</div>
+                                <strong>Vertical</strong>
+                                <div class="help-text">Top to bottom</div>
                             </div>
                         </label>
                         <label class="radio-option">
                             <input type="radio" name="direction" value="horizontal">
                             <div>
-                                <strong>Horizontal Split</strong>
-                                <div class="help-text">Left to right (for wide images)</div>
-                            </div>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="direction" value="auto">
-                            <div>
-                                <strong>Auto Detect</strong>
-                                <div class="help-text">Smart split based on image</div>
+                                <strong>Horizontal</strong>
+                                <div class="help-text">Left to right</div>
                             </div>
                         </label>
                     </div>
-                </div>
 
-                <div class="section">
-                    <h2 class="section-title">📄 Pages to Create</h2>
+                    <h2 class="section-title" style="margin-top: 20px;">📄 Number of Pages</h2>
                     <div class="range-label">
-                        <span>2 pages</span>
+                        <span>2</span>
                         <span id="pagesValue">4 pages</span>
-                        <span>12 pages</span>
+                        <span>12</span>
                     </div>
                     <input type="range" id="pagesSlider" min="2" max="12" value="4" step="1">
-                    <p class="help-text">How many pages to split into</p>
                 </div>
 
                 <div class="section">
@@ -532,18 +624,15 @@
                         <input type="checkbox" id="marginsCheck" checked>
                         <label for="marginsCheck">Add print margins</label>
                     </div>
-                    <div class="checkbox-option">
-                        <input type="checkbox" id="fitToPageCheck">
-                        <label for="fitToPageCheck">Fit to page (may crop)</label>
-                    </div>
                 </div>
 
                 <div class="section">
-                    <button class="btn btn-primary" id="splitBtn" disabled>✂️ Split into Pages</button>
+                    <button class="btn btn-primary" id="applySplitBtn" disabled>✂️ Apply Split</button>
+                    <button class="btn btn-success" id="generateBtn" disabled>📄 Generate Pages</button>
                     <button class="btn btn-accent" id="previewBtn" disabled>👁️ Preview Magazine</button>
-                    <button class="btn btn-secondary" id="downloadBtn" disabled>📥 Download PDF (300 DPI)</button>
+                    <button class="btn btn-secondary" id="downloadBtn" disabled>📥 Download PDF</button>
                     <div class="info-badge" style="margin-top: 15px; display: block; text-align: center;">
-                        ✓ Print-ready • 300 DPI • CMYK safe
+                        ✓ Print-ready • 300 DPI
                     </div>
                 </div>
             </aside>
@@ -552,25 +641,25 @@
                 <div class="empty-state" id="emptyState">
                     <div class="empty-state-icon">📄</div>
                     <h3>Upload an image to get started</h3>
-                    <p style="margin-top: 10px;">Your image will be split into magazine-sized pages</p>
-                    <p class="help-text" style="margin-top: 20px;">
-                        Perfect for:<br>
-                        • Long infographics<br>
-                        • Poster designs<br>
-                        • Comic strips<br>
-                        • Photo collages
-                    </p>
+                    <p style="margin-top: 10px;">Split it into magazine-sized pages</p>
                 </div>
 
-                <div id="uploadedPreview" style="display: none;">
-                    <h3 style="margin-bottom: 15px;">📸 Uploaded Image</h3>
-                    <img id="uploadedImage" class="uploaded-image" alt="Uploaded">
+                <div id="interactiveSection" style="display: none;">
+                    <div class="instruction-box" id="instructionBox">
+                        <strong>📍 Auto Mode:</strong>
+                        Adjust the number of pages using the slider. Click "Apply Split" to see the cuts.
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <div class="canvas-container" id="canvasContainer">
+                            <canvas id="interactiveCanvas"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
-                    <p><strong>Splitting your image into pages...</strong></p>
-                    <p class="help-text">This may take a moment for large images</p>
+                    <p><strong>Generating your magazine pages...</strong></p>
                 </div>
 
                 <div id="pagesPreview" style="display: none;">
@@ -593,21 +682,22 @@
     </div>
 
     <footer>
-        <p><strong>Magazine Page Splitter</strong> - Turn any large image into a printable magazine</p>
-        <p style="margin-top: 10px; font-size: 0.85rem;">Perfect for printing posters, infographics, and designs as booklets</p>
+        <p><strong>Magazine Page Splitter</strong> - Manual cut adjustment for perfect magazine pages</p>
+        <p style="margin-top: 10px; font-size: 0.85rem;">Drag the blue lines to adjust where your image splits</p>
     </footer>
 
     <script>
         const state = {
             uploadedImage: null,
-            pages: [],
+            mode: 'auto', // 'auto' or 'manual'
             direction: 'vertical',
             size: 'a4',
             numPages: 4,
+            splitPositions: [],
+            pages: [],
             title: '',
             pageNumbers: true,
             margins: true,
-            fitToPage: false,
             currentPage: 0
         };
 
@@ -617,22 +707,27 @@
             letter: { width: 215.9, height: 279.4, dpi: 300 }
         };
 
-        const printConfig = {
-            margin: 10,
-            bleed: 3
-        };
+        const printConfig = { margin: 10, bleed: 3 };
 
         // DOM elements
         const uploadZone = document.getElementById('uploadZone');
         const fileInput = document.getElementById('fileInput');
-        const splitBtn = document.getElementById('splitBtn');
+        const splitModeSection = document.getElementById('splitModeSection');
+        const autoModeBtn = document.getElementById('autoModeBtn');
+        const manualModeBtn = document.getElementById('manualModeBtn');
+        const modeHelp = document.getElementById('modeHelp');
+        const instructionBox = document.getElementById('instructionBox');
+        const applySplitBtn = document.getElementById('applySplitBtn');
+        const generateBtn = document.getElementById('generateBtn');
         const previewBtn = document.getElementById('previewBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const pagesSlider = document.getElementById('pagesSlider');
         const pagesValue = document.getElementById('pagesValue');
         const emptyState = document.getElementById('emptyState');
-        const uploadedPreview = document.getElementById('uploadedPreview');
-        const uploadedImage = document.getElementById('uploadedImage');
+        const interactiveSection = document.getElementById('interactiveSection');
+        const canvas = document.getElementById('interactiveCanvas');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const ctx = canvas.getContext('2d');
         const imageInfo = document.getElementById('imageInfo');
         const loading = document.getElementById('loading');
         const pagesPreview = document.getElementById('pagesPreview');
@@ -675,30 +770,41 @@
                         element: img
                     };
                     
-                    displayUploadedImage();
-                    splitBtn.disabled = false;
+                    displayInteractiveCanvas();
+                    splitModeSection.style.display = 'block';
+                    applySplitBtn.disabled = false;
+                    
+                    const orientation = img.width > img.height ? 'Landscape' : 'Portrait';
+                    imageInfo.style.display = 'block';
+                    imageInfo.innerHTML = `
+                        <strong>Image Info:</strong><br>
+                        Size: ${img.width} × ${img.height} px<br>
+                        Orientation: ${orientation}
+                    `;
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        function displayUploadedImage() {
-            const img = state.uploadedImage;
-            emptyState.style.display = 'none';
-            uploadedPreview.style.display = 'block';
-            uploadedImage.src = img.src;
-            
-            const aspectRatio = (img.width / img.height).toFixed(2);
-            const orientation = img.width > img.height ? 'Landscape' : img.height > img.width ? 'Portrait' : 'Square';
-            
-            imageInfo.style.display = 'block';
-            imageInfo.innerHTML = `
-                <strong>Image Info:</strong><br>
-                Size: ${img.width} × ${img.height} px<br>
-                Aspect Ratio: ${aspectRatio} (${orientation})
-            `;
-        }
+        // Mode toggle
+        autoModeBtn.addEventListener('click', () => {
+            state.mode = 'auto';
+            autoModeBtn.classList.add('active');
+            manualModeBtn.classList.remove('active');
+            modeHelp.textContent = 'Automatic even splitting';
+            instructionBox.innerHTML = '<strong>📍 Auto Mode:</strong> Adjust the number of pages using the slider. Click "Apply Split" to see the cuts.';
+            if (state.uploadedImage) displayInteractiveCanvas();
+        });
+
+        manualModeBtn.addEventListener('click', () => {
+            state.mode = 'manual';
+            manualModeBtn.classList.add('active');
+            autoModeBtn.classList.remove('active');
+            modeHelp.textContent = 'Drag lines to adjust cuts';
+            instructionBox.innerHTML = '<strong>🖱️ Manual Mode:</strong> Drag the blue lines to adjust where your image splits. Click anywhere to add new cut lines.';
+            if (state.uploadedImage) displayInteractiveCanvas();
+        });
 
         // Settings
         document.querySelectorAll('input[name="direction"]').forEach(radio => {
@@ -706,6 +812,7 @@
                 state.direction = e.target.value;
                 document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
                 e.target.closest('.radio-option').classList.add('selected');
+                if (state.uploadedImage) displayInteractiveCanvas();
             });
         });
 
@@ -716,6 +823,9 @@
         pagesSlider.addEventListener('input', (e) => {
             state.numPages = parseInt(e.target.value);
             pagesValue.textContent = `${state.numPages} pages`;
+            if (state.mode === 'auto' && state.uploadedImage) {
+                displayInteractiveCanvas();
+            }
         });
 
         document.getElementById('titleInput').addEventListener('input', (e) => {
@@ -730,18 +840,143 @@
             state.margins = e.target.checked;
         });
 
-        document.getElementById('fitToPageCheck').addEventListener('change', (e) => {
-            state.fitToPage = e.target.checked;
+        // Display interactive canvas
+        function displayInteractiveCanvas() {
+            emptyState.style.display = 'none';
+            interactiveSection.style.display = 'block';
+            pagesPreview.style.display = 'none';
+            magazineViewer.style.display = 'none';
+
+            const img = state.uploadedImage.element;
+            const maxWidth = 800;
+            const scale = Math.min(maxWidth / img.width, 1);
+            
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Calculate split positions
+            if (state.mode === 'auto') {
+                state.splitPositions = [];
+                const numSplits = state.numPages - 1;
+                
+                if (state.direction === 'vertical') {
+                    for (let i = 1; i <= numSplits; i++) {
+                        state.splitPositions.push((canvas.height / state.numPages) * i);
+                    }
+                } else {
+                    for (let i = 1; i <= numSplits; i++) {
+                        state.splitPositions.push((canvas.width / state.numPages) * i);
+                    }
+                }
+            }
+
+            drawSplitLines();
+        }
+
+        function drawSplitLines() {
+            // Clear existing lines
+            const existingLines = canvasContainer.querySelectorAll('.split-line');
+            existingLines.forEach(line => line.remove());
+
+            // Draw new lines
+            state.splitPositions.forEach((pos, index) => {
+                const line = document.createElement('div');
+                line.className = `split-line ${state.direction === 'vertical' ? 'horizontal' : 'vertical'}`;
+                line.dataset.index = index;
+
+                if (state.direction === 'vertical') {
+                    line.style.top = pos + 'px';
+                } else {
+                    line.style.left = pos + 'px';
+                }
+
+                const handle = document.createElement('div');
+                handle.className = 'handle';
+                handle.textContent = '⋮';
+                line.appendChild(handle);
+
+                const label = document.createElement('div');
+                label.className = 'label';
+                label.textContent = `Cut ${index + 1}`;
+                line.appendChild(label);
+
+                canvasContainer.appendChild(line);
+
+                // Make draggable
+                makeDraggable(line, index);
+            });
+        }
+
+        function makeDraggable(element, index) {
+            let isDragging = false;
+
+            element.addEventListener('mousedown', (e) => {
+                if (state.mode === 'manual') {
+                    isDragging = true;
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const rect = canvasContainer.getBoundingClientRect();
+                
+                if (state.direction === 'vertical') {
+                    let newTop = e.clientY - rect.top;
+                    newTop = Math.max(20, Math.min(newTop, canvas.height - 20));
+                    state.splitPositions[index] = newTop;
+                    element.style.top = newTop + 'px';
+                } else {
+                    let newLeft = e.clientX - rect.left;
+                    newLeft = Math.max(20, Math.min(newLeft, canvas.width - 20));
+                    state.splitPositions[index] = newLeft;
+                    element.style.left = newLeft + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+
+        // Add new split line on click (manual mode)
+        canvas.addEventListener('click', (e) => {
+            if (state.mode !== 'manual') return;
+
+            const rect = canvas.getBoundingClientRect();
+            
+            if (state.direction === 'vertical') {
+                const y = e.clientY - rect.top;
+                state.splitPositions.push(y);
+            } else {
+                const x = e.clientX - rect.left;
+                state.splitPositions.push(x);
+            }
+
+            state.splitPositions.sort((a, b) => a - b);
+            drawSplitLines();
         });
 
-        // Split into pages
-        splitBtn.addEventListener('click', splitImage);
+        // Apply split
+        applySplitBtn.addEventListener('click', () => {
+            if (state.splitPositions.length === 0) {
+                alert('Please add at least one split line!');
+                return;
+            }
+            generateBtn.disabled = false;
+        });
 
-        function splitImage() {
+        // Generate pages
+        generateBtn.addEventListener('click', generatePages);
+
+        function generatePages() {
             if (!state.uploadedImage) return;
 
             loading.style.display = 'block';
-            uploadedPreview.style.display = 'none';
+            interactiveSection.style.display = 'none';
             pagesPreview.style.display = 'none';
             magazineViewer.style.display = 'none';
 
@@ -754,87 +989,64 @@
                 const pageWidth = mmToPx(size.width);
                 const pageHeight = mmToPx(size.height);
                 const margin = state.margins ? mmToPx(printConfig.margin) : 0;
+
+                // Calculate actual split positions on original image
+                const scaleToOriginal = img.width / canvas.width;
+                const actualSplits = state.splitPositions.map(pos => pos * scaleToOriginal);
                 
-                let direction = state.direction;
-                if (direction === 'auto') {
-                    direction = img.height > img.width ? 'vertical' : 'horizontal';
-                }
+                // Add start and end positions
+                const allPositions = [0, ...actualSplits, state.direction === 'vertical' ? img.height : img.width];
 
-                const numPages = state.numPages;
-
-                for (let i = 0; i < numPages; i++) {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
+                for (let i = 0; i < allPositions.length - 1; i++) {
+                    const pageCanvas = document.createElement('canvas');
+                    const pageCtx = pageCanvas.getContext('2d');
                     
-                    canvas.width = pageWidth;
-                    canvas.height = pageHeight;
+                    pageCanvas.width = pageWidth;
+                    pageCanvas.height = pageHeight;
 
-                    // White background
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    pageCtx.fillStyle = '#ffffff';
+                    pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
 
-                    // Calculate source rectangle
                     let sx, sy, sWidth, sHeight;
                     
-                    if (direction === 'vertical') {
-                        const partHeight = img.height / numPages;
+                    if (state.direction === 'vertical') {
                         sx = 0;
-                        sy = i * partHeight;
+                        sy = allPositions[i];
                         sWidth = img.width;
-                        sHeight = partHeight;
+                        sHeight = allPositions[i + 1] - allPositions[i];
                     } else {
-                        const partWidth = img.width / numPages;
-                        sx = i * partWidth;
+                        sx = allPositions[i];
                         sy = 0;
-                        sWidth = partWidth;
+                        sWidth = allPositions[i + 1] - allPositions[i];
                         sHeight = img.height;
                     }
 
-                    // Calculate destination rectangle
-                    const contentWidth = canvas.width - (margin * 2);
-                    const contentHeight = canvas.height - (margin * 2);
+                    const contentWidth = pageCanvas.width - (margin * 2);
+                    const contentHeight = pageCanvas.height - (margin * 2);
                     
-                    let dx = margin;
-                    let dy = margin;
-                    let dWidth = contentWidth;
-                    let dHeight = contentHeight;
+                    const scale = Math.min(contentWidth / sWidth, contentHeight / sHeight);
+                    const dWidth = sWidth * scale;
+                    const dHeight = sHeight * scale;
+                    const dx = margin + (contentWidth - dWidth) / 2;
+                    const dy = margin + (contentHeight - dHeight) / 2;
 
-                    if (!state.fitToPage) {
-                        // Maintain aspect ratio
-                        const scale = Math.min(contentWidth / sWidth, contentHeight / sHeight);
-                        dWidth = sWidth * scale;
-                        dHeight = sHeight * scale;
-                        dx = margin + (contentWidth - dWidth) / 2;
-                        dy = margin + (contentHeight - dHeight) / 2;
-                    } else {
-                        // Fill page (may crop)
-                        const scale = Math.max(contentWidth / sWidth, contentHeight / sHeight);
-                        dWidth = sWidth * scale;
-                        dHeight = sHeight * scale;
-                        dx = margin + (contentWidth - dWidth) / 2;
-                        dy = margin + (contentHeight - dHeight) / 2;
-                    }
+                    pageCtx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
 
-                    // Draw image part
-                    ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-
-                    // Add title on first page
                     if (state.title && i === 0) {
-                        ctx.fillStyle = '#1a1a1a';
-                        ctx.font = `bold ${mmToPx(6)}px serif`;
-                        ctx.textAlign = 'center';
-                        ctx.fillText(state.title.toUpperCase(), canvas.width / 2, margin + mmToPx(4));
+                        pageCtx.fillStyle = '#1a1a1a';
+                        pageCtx.font = `bold ${mmToPx(6)}px serif`;
+                        pageCtx.textAlign = 'center';
+                        pageCtx.fillText(state.title.toUpperCase(), pageCanvas.width / 2, margin + mmToPx(4));
                     }
 
-                    // Add page numbers
                     if (state.pageNumbers) {
-                        ctx.fillStyle = '#666666';
-                        ctx.font = `${mmToPx(3)}px sans-serif`;
-                        ctx.textAlign = 'center';
-                        ctx.fillText(`${i + 1}`, canvas.width / 2, canvas.height - margin / 2);
+                        pageCtx.fillStyle = '#666666';
+                        pageCtx.font = `${mmToPx(3)}px sans-serif`;
+                        pageCtx.textAlign = 'center';
+                        pageCtx.fillText(`${i + 1}`, pageCanvas.width / 2, pageCanvas.height - margin / 2);
                     }
 
-                    state.pages.push(canvas);
+                    state.pages.push(pageCanvas);
                 }
 
                 displayPages();
@@ -848,13 +1060,13 @@
             pagesPreview.style.display = 'block';
             document.getElementById('pageCount').textContent = state.pages.length;
             
-            pagesGrid.innerHTML = state.pages.map((canvas, i) => {
+            pagesGrid.innerHTML = state.pages.map((pageCanvas, i) => {
                 const previewCanvas = document.createElement('canvas');
                 const ctx = previewCanvas.getContext('2d');
-                const scale = 200 / Math.max(canvas.width, canvas.height);
-                previewCanvas.width = canvas.width * scale;
-                previewCanvas.height = canvas.height * scale;
-                ctx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+                const scale = 200 / Math.max(pageCanvas.width, pageCanvas.height);
+                previewCanvas.width = pageCanvas.width * scale;
+                previewCanvas.height = pageCanvas.height * scale;
+                ctx.drawImage(pageCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
                 
                 return `
                     <div class="page-card" onclick="showPage(${i})">
@@ -871,7 +1083,7 @@
         window.showPage = function(pageIndex) {
             state.currentPage = pageIndex;
             pagesPreview.style.display = 'none';
-            uploadedPreview.style.display = 'none';
+            interactiveSection.style.display = 'none';
             magazineViewer.style.display = 'block';
             
             const pageDisplay = document.getElementById('pageDisplay');
@@ -911,9 +1123,9 @@
                 compress: true
             });
 
-            state.pages.forEach((canvas, i) => {
+            state.pages.forEach((pageCanvas, i) => {
                 if (i > 0) pdf.addPage();
-                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const imgData = pageCanvas.toDataURL('image/jpeg', 1.0);
                 pdf.addImage(imgData, 'JPEG', 0, 0, size.width, size.height, '', 'FAST');
             });
             
