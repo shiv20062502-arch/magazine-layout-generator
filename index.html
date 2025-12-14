@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Magazine Layout Generator - Print-Ready Photo Layouts</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -193,12 +194,21 @@
             background: #e5e5e5;
         }
 
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-accent:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        select, input[type="text"], input[type="number"] {
+        select, input[type="text"], input[type="number"], input[type="range"] {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border);
@@ -243,6 +253,7 @@
             border-radius: 8px;
             min-height: 600px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
@@ -279,6 +290,16 @@
             overflow: hidden;
             cursor: move;
             border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .image-thumb:hover {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .image-thumb.dragging {
+            opacity: 0.5;
         }
 
         .image-thumb img {
@@ -302,6 +323,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .image-thumb .split-btn {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(37, 99, 235, 0.9);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
         }
 
         .checkbox-option {
@@ -355,34 +389,203 @@
             font-size: 0.75rem;
             margin-top: 5px;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #000;
+        }
+
+        .split-preview {
+            max-width: 100%;
+            margin: 20px 0;
+        }
+
+        .split-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .split-controls label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        /* Magazine Flip Viewer */
+        .magazine-viewer {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            margin: 20px auto;
+        }
+
+        .magazine-viewer.active {
+            display: block;
+        }
+
+        .flipbook {
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .flipbook .page {
+            width: 400px;
+            height: 600px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .flipbook .page img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .flip-controls {
+            text-align: center;
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .flip-controls button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .flip-controls button:hover {
+            background: #333;
+        }
+
+        .flip-controls .page-indicator {
+            padding: 10px 20px;
+            background: var(--secondary);
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .range-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 5px;
+        }
+
+        .pages-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .page-preview {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .page-preview:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .page-preview canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .page-preview .page-number {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>Magazine Layout Generator</h1>
-        <p class="subtitle">Create professional, print-ready magazine layouts from your photos</p>
+        <p class="subtitle">Create professional, print-ready magazine layouts with image splitting & flip preview</p>
     </header>
 
     <div class="steps">
         <div class="step">
             <div class="step-number">1</div>
-            <h3>Upload Photos</h3>
-            <p>Drag & drop or select multiple images</p>
+            <h3>Upload & Split</h3>
+            <p>Upload images and split long photos</p>
         </div>
         <div class="step">
             <div class="step-number">2</div>
-            <h3>Customize Layout</h3>
-            <p>Choose style, size, and density</p>
+            <h3>Arrange & Customize</h3>
+            <p>Drag to reorder, choose layout style</p>
         </div>
         <div class="step">
             <div class="step-number">3</div>
-            <h3>Preview</h3>
-            <p>See your magazine layout in real-time</p>
+            <h3>Preview & Flip</h3>
+            <p>See magazine with realistic page flip</p>
         </div>
         <div class="step">
             <div class="step-number">4</div>
-            <h3>Download</h3>
-            <p>Export as 300 DPI print-ready PDF</p>
+            <h3>Download PDF</h3>
+            <p>Export as 300 DPI print-ready file</p>
         </div>
     </div>
 
@@ -425,10 +628,10 @@
                             </div>
                         </label>
                         <label class="radio-option">
-                            <input type="radio" name="style" value="lifestyle">
+                            <input type="radio" name="style" value="custom">
                             <div>
-                                <strong>Lifestyle</strong>
-                                <div style="font-size: 0.85rem; color: var(--text-light);">Mixed sizes, dynamic</div>
+                                <strong>Custom Grid</strong>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">Manual arrangement</div>
                             </div>
                         </label>
                     </div>
@@ -444,21 +647,18 @@
                 </div>
 
                 <div class="section">
-                    <h2 class="section-title">Layout Density</h2>
-                    <select id="densitySelect">
-                        <option value="minimal">Minimal - More white space</option>
-                        <option value="balanced" selected>Balanced - Standard</option>
-                        <option value="bold">Bold - Maximum images</option>
-                    </select>
+                    <h2 class="section-title">Images Per Page</h2>
+                    <div class="range-label">
+                        <span>1 image</span>
+                        <span id="imagesPerPageValue">2 images</span>
+                        <span>6 images</span>
+                    </div>
+                    <input type="range" id="imagesPerPage" min="1" max="6" value="2" step="1">
                 </div>
 
                 <div class="section">
                     <h2 class="section-title">Customization</h2>
                     <input type="text" id="titleInput" placeholder="Magazine title (optional)">
-                    <div class="checkbox-option">
-                        <input type="checkbox" id="captionsCheck">
-                        <label for="captionsCheck">Add image captions</label>
-                    </div>
                     <div class="checkbox-option">
                         <input type="checkbox" id="pageNumbersCheck" checked>
                         <label for="pageNumbersCheck">Show page numbers</label>
@@ -466,7 +666,8 @@
                 </div>
 
                 <div class="section">
-                    <button class="btn btn-primary" id="generateBtn" disabled>Generate Preview</button>
+                    <button class="btn btn-primary" id="generateBtn" disabled>Generate Magazine</button>
+                    <button class="btn btn-accent" id="flipViewBtn" disabled>📖 Flip Preview</button>
                     <button class="btn btn-secondary" id="downloadBtn" disabled>Download PDF (300 DPI)</button>
                     <div class="info-badge" style="margin-top: 15px; display: block;">
                         ✓ Print-ready with bleed & safe zones
@@ -480,7 +681,18 @@
                     <h3>Your magazine preview will appear here</h3>
                     <p style="margin-top: 10px;">Upload images to get started</p>
                 </div>
-                <canvas id="previewCanvas" class="preview-canvas" style="display: none;"></canvas>
+                
+                <div id="pagesPreview" class="pages-preview" style="display: none;"></div>
+                
+                <div class="magazine-viewer" id="magazineViewer">
+                    <div id="flipbook" class="flipbook"></div>
+                    <div class="flip-controls">
+                        <button id="prevPage">← Previous</button>
+                        <div class="page-indicator" id="pageIndicator">Page 1</div>
+                        <button id="nextPage">Next →</button>
+                    </div>
+                </div>
+
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
                     <p>Generating your magazine layout...</p>
@@ -489,32 +701,54 @@
         </div>
     </div>
 
+    <!-- Split Image Modal -->
+    <div id="splitModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" id="modalClose">&times;</span>
+            <h2>Split Image</h2>
+            <canvas id="splitPreview" class="split-preview"></canvas>
+            <div class="split-controls">
+                <label>
+                    <span>Split Direction:</span>
+                    <select id="splitDirection">
+                        <option value="horizontal">Horizontal (Top/Bottom)</option>
+                        <option value="vertical">Vertical (Left/Right)</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Number of Parts:</span>
+                    <input type="number" id="splitParts" min="2" max="6" value="2">
+                </label>
+            </div>
+            <button class="btn btn-primary" id="applySplit">Apply Split</button>
+        </div>
+    </div>
+
     <footer>
         <p>Magazine Layout Generator - Professional print-ready layouts for photographers, designers & creators</p>
-        <p style="margin-top: 10px; font-size: 0.85rem;">All layouts optimized for 300 DPI printing with CMYK color space</p>
+        <p style="margin-top: 10px; font-size: 0.85rem;">Drag images to reorder • Click "Split" to divide long photos • Use flip preview to see your magazine</p>
     </footer>
 
     <script>
         // State management
         const state = {
             images: [],
-            loadedImages: [],
+            pages: [],
             style: 'fashion',
             size: 'a4',
-            density: 'balanced',
+            imagesPerPage: 2,
             title: '',
-            captions: false,
-            pageNumbers: true
+            pageNumbers: true,
+            currentSplitImage: null
         };
 
-        // Size configurations (in mm for print)
+        // Size configurations
         const sizes = {
             a4: { width: 210, height: 297, dpi: 300 },
             a5: { width: 148, height: 210, dpi: 300 },
             letter: { width: 215.9, height: 279.4, dpi: 300 }
         };
 
-        // Margins and bleed (in mm)
         const printConfig = {
             bleed: 3,
             margin: 10,
@@ -527,9 +761,15 @@
         const imageGrid = document.getElementById('imageGrid');
         const generateBtn = document.getElementById('generateBtn');
         const downloadBtn = document.getElementById('downloadBtn');
-        const previewCanvas = document.getElementById('previewCanvas');
+        const flipViewBtn = document.getElementById('flipViewBtn');
         const emptyState = document.getElementById('emptyState');
         const loading = document.getElementById('loading');
+        const pagesPreview = document.getElementById('pagesPreview');
+        const magazineViewer = document.getElementById('magazineViewer');
+        const splitModal = document.getElementById('splitModal');
+        const modalClose = document.getElementById('modalClose');
+        const imagesPerPageSlider = document.getElementById('imagesPerPage');
+        const imagesPerPageValue = document.getElementById('imagesPerPageValue');
 
         // Upload handling
         uploadZone.addEventListener('click', () => fileInput.click());
@@ -561,6 +801,7 @@
                         const img = new Image();
                         img.onload = () => {
                             state.images.push({
+                                id: Date.now() + Math.random(),
                                 src: e.target.result,
                                 width: img.width,
                                 height: img.height,
@@ -579,11 +820,48 @@
 
         function updateImageGrid() {
             imageGrid.innerHTML = state.images.map((img, index) => `
-                <div class="image-thumb" data-index="${index}">
+                <div class="image-thumb" draggable="true" data-index="${index}" data-id="${img.id}">
                     <img src="${img.src}" alt="Image ${index + 1}">
+                    <button class="split-btn" onclick="openSplitModal(${index})">Split</button>
                     <button class="remove" onclick="removeImage(${index})">×</button>
                 </div>
             `).join('');
+
+            // Add drag and drop for reordering
+            const thumbs = document.querySelectorAll('.image-thumb');
+            thumbs.forEach(thumb => {
+                thumb.addEventListener('dragstart', handleDragStart);
+                thumb.addEventListener('dragover', handleDragOver);
+                thumb.addEventListener('drop', handleDrop);
+                thumb.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        let draggedIndex = null;
+
+        function handleDragStart(e) {
+            draggedIndex = parseInt(e.currentTarget.dataset.index);
+            e.currentTarget.classList.add('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropIndex = parseInt(e.currentTarget.dataset.index);
+            if (draggedIndex !== null && draggedIndex !== dropIndex) {
+                const draggedItem = state.images[draggedIndex];
+                state.images.splice(draggedIndex, 1);
+                state.images.splice(dropIndex, 0, draggedItem);
+                updateImageGrid();
+            }
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            draggedIndex = null;
         }
 
         window.removeImage = function(index) {
@@ -591,14 +869,21 @@
             updateImageGrid();
             updateButtons();
             if (state.images.length === 0) {
-                downloadBtn.disabled = true;
-                previewCanvas.style.display = 'none';
-                emptyState.style.display = 'block';
+                resetPreview();
             }
         }
 
         function updateButtons() {
             generateBtn.disabled = state.images.length === 0;
+        }
+
+        function resetPreview() {
+            downloadBtn.disabled = true;
+            flipViewBtn.disabled = true;
+            pagesPreview.style.display = 'none';
+            magazineViewer.classList.remove('active');
+            emptyState.style.display = 'block';
+            state.pages = [];
         }
 
         // Settings handling
@@ -614,162 +899,170 @@
             state.size = e.target.value;
         });
 
-        document.getElementById('densitySelect').addEventListener('change', (e) => {
-            state.density = e.target.value;
+        imagesPerPageSlider.addEventListener('input', (e) => {
+            state.imagesPerPage = parseInt(e.target.value);
+            imagesPerPageValue.textContent = `${state.imagesPerPage} image${state.imagesPerPage > 1 ? 's' : ''}`;
         });
 
         document.getElementById('titleInput').addEventListener('input', (e) => {
             state.title = e.target.value;
         });
 
-        document.getElementById('captionsCheck').addEventListener('change', (e) => {
-            state.captions = e.target.checked;
-        });
-
         document.getElementById('pageNumbersCheck').addEventListener('change', (e) => {
             state.pageNumbers = e.target.checked;
         });
 
-        // Layout generation
-        generateBtn.addEventListener('click', generatePreview);
+        // Split Image Modal
+        window.openSplitModal = function(index) {
+            state.currentSplitImage = index;
+            const img = state.images[index];
+            const canvas = document.getElementById('splitPreview');
+            const ctx = canvas.getContext('2d');
+            
+            const maxWidth = 600;
+            const scale = Math.min(maxWidth / img.width, 1);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            
+            ctx.drawImage(img.imgElement, 0, 0, canvas.width, canvas.height);
+            
+            splitModal.classList.add('active');
+        }
 
-        function generatePreview() {
+        modalClose.addEventListener('click', () => {
+            splitModal.classList.remove('active');
+        });
+
+        document.getElementById('applySplit').addEventListener('click', () => {
+            const index = state.currentSplitImage;
+            const direction = document.getElementById('splitDirection').value;
+            const parts = parseInt(document.getElementById('splitParts').value);
+            
+            splitImage(index, direction, parts);
+            splitModal.classList.remove('active');
+        });
+
+        function splitImage(index, direction, parts) {
+            const img = state.images[index];
+            const splits = [];
+            
+            for (let i = 0; i < parts; i++) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                if (direction === 'horizontal') {
+                    const partHeight = img.height / parts;
+                    canvas.width = img.width;
+                    canvas.height = partHeight;
+                    ctx.drawImage(img.imgElement, 0, -i * partHeight);
+                } else {
+                    const partWidth = img.width / parts;
+                    canvas.width = partWidth;
+                    canvas.height = img.height;
+                    ctx.drawImage(img.imgElement, -i * partWidth, 0);
+                }
+                
+                const newImg = new Image();
+                newImg.src = canvas.toDataURL();
+                splits.push({
+                    id: Date.now() + Math.random() + i,
+                    src: canvas.toDataURL(),
+                    width: canvas.width,
+                    height: canvas.height,
+                    aspectRatio: canvas.width / canvas.height,
+                    imgElement: newImg
+                });
+            }
+            
+            state.images.splice(index, 1, ...splits);
+            updateImageGrid();
+        }
+
+        // Generate Magazine
+        generateBtn.addEventListener('click', generateMagazine);
+
+        function generateMagazine() {
             if (state.images.length === 0) return;
 
             loading.classList.add('active');
             emptyState.style.display = 'none';
-            previewCanvas.style.display = 'none';
+            pagesPreview.style.display = 'none';
+            magazineViewer.classList.remove('active');
 
             setTimeout(() => {
-                const canvas = previewCanvas;
-                const ctx = canvas.getContext('2d');
-                const size = sizes[state.size];
-                
-                // Convert mm to pixels at 300 DPI
-                const mmToPx = (mm) => (mm / 25.4) * size.dpi;
-                
-                canvas.width = mmToPx(size.width);
-                canvas.height = mmToPx(size.height);
+                state.pages = [];
+                const imagesPerPage = state.imagesPerPage;
+                const totalPages = Math.ceil(state.images.length / imagesPerPage);
 
-                // White background
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Calculate usable area
-                const margin = mmToPx(printConfig.margin);
-                const usableWidth = canvas.width - (margin * 2);
-                const usableHeight = canvas.height - (margin * 2);
-
-                // Apply layout based on style
-                applyLayout(ctx, margin, usableWidth, usableHeight, mmToPx);
-
-                // Add title if provided
-                if (state.title) {
-                    ctx.fillStyle = '#1a1a1a';
-                    ctx.font = `${mmToPx(8)}px serif`;
-                    ctx.textAlign = 'center';
-                    ctx.fillText(state.title.toUpperCase(), canvas.width / 2, margin + mmToPx(5));
+                for (let i = 0; i < totalPages; i++) {
+                    const pageImages = state.images.slice(i * imagesPerPage, (i + 1) * imagesPerPage);
+                    const canvas = createPage(pageImages, i + 1);
+                    state.pages.push(canvas);
                 }
 
-                // Add page numbers
-                if (state.pageNumbers) {
-                    ctx.fillStyle = '#666666';
-                    ctx.font = `${mmToPx(3)}px sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.fillText('1', canvas.width / 2, canvas.height - margin + mmToPx(3));
-                }
-
+                displayPagesPreview();
                 loading.classList.remove('active');
-                previewCanvas.style.display = 'block';
                 downloadBtn.disabled = false;
+                flipViewBtn.disabled = false;
             }, 500);
         }
 
-        function applyLayout(ctx, margin, width, height, mmToPx) {
-            const images = state.images;
-            if (images.length === 0) return;
-
-            const startY = state.title ? margin + mmToPx(15) : margin;
-            const availableHeight = height - (state.title ? mmToPx(15) : 0);
-
-            switch (state.style) {
-                case 'fashion':
-                    applyFashionLayout(ctx, margin, width, availableHeight, startY, mmToPx);
-                    break;
-                case 'editorial':
-                    applyEditorialLayout(ctx, margin, width, availableHeight, startY, mmToPx);
-                    break;
-                case 'portfolio':
-                    applyPortfolioLayout(ctx, margin, width, availableHeight, startY, mmToPx);
-                    break;
-                case 'lifestyle':
-                    applyLifestyleLayout(ctx, margin, width, availableHeight, startY, mmToPx);
-                    break;
-            }
-        }
-
-        function applyFashionLayout(ctx, margin, width, height, startY, mmToPx) {
-            const gap = mmToPx(state.density === 'minimal' ? 8 : state.density === 'balanced' ? 5 : 3);
-            const images = state.images.slice(0, 3);
+        function createPage(images, pageNumber) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const size = sizes[state.size];
             
-            if (images.length === 1) {
-                drawImage(ctx, images[0], margin, startY, width, height);
-            } else if (images.length === 2) {
-                drawImage(ctx, images[0], margin, startY, width, height * 0.6 - gap/2);
-                drawImage(ctx, images[1], margin, startY + height * 0.6 + gap/2, width, height * 0.4 - gap/2);
-            } else {
-                drawImage(ctx, images[0], margin, startY, width * 0.6 - gap/2, height);
-                drawImage(ctx, images[1], margin + width * 0.6 + gap/2, startY, width * 0.4 - gap/2, height * 0.5 - gap/2);
-                drawImage(ctx, images[2], margin + width * 0.6 + gap/2, startY + height * 0.5 + gap/2, width * 0.4 - gap/2, height * 0.5 - gap/2);
+            const mmToPx = (mm) => (mm / 25.4) * size.dpi;
+            
+            canvas.width = mmToPx(size.width);
+            canvas.height = mmToPx(size.height);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const margin = mmToPx(printConfig.margin);
+            const usableWidth = canvas.width - (margin * 2);
+            const usableHeight = canvas.height - (margin * 2);
+
+            const startY = state.title && pageNumber === 1 ? margin + mmToPx(15) : margin;
+            const availableHeight = usableHeight - (state.title && pageNumber === 1 ? mmToPx(15) : 0);
+
+            // Layout images
+            layoutImages(ctx, images, margin, usableWidth, availableHeight, startY);
+
+            // Add title on first page
+            if (state.title && pageNumber === 1) {
+                ctx.fillStyle = '#1a1a1a';
+                ctx.font = `${mmToPx(8)}px serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText(state.title.toUpperCase(), canvas.width / 2, margin + mmToPx(5));
             }
+
+            // Add page numbers
+            if (state.pageNumbers) {
+                ctx.fillStyle = '#666666';
+                ctx.font = `${mmToPx(3)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText(pageNumber.toString(), canvas.width / 2, canvas.height - margin + mmToPx(3));
+            }
+
+            return canvas;
         }
 
-        function applyEditorialLayout(ctx, margin, width, height, startY, mmToPx) {
-            const gap = mmToPx(state.density === 'minimal' ? 10 : state.density === 'balanced' ? 6 : 4);
-            const cols = state.density === 'minimal' ? 2 : state.density === 'balanced' ? 2 : 3;
-            const rows = Math.ceil(state.images.length / cols);
+        function layoutImages(ctx, images, margin, width, height, startY) {
+            const gap = 10;
+            const cols = Math.ceil(Math.sqrt(images.length));
+            const rows = Math.ceil(images.length / cols);
             const cellWidth = (width - gap * (cols - 1)) / cols;
             const cellHeight = (height - gap * (rows - 1)) / rows;
 
-            state.images.forEach((img, i) => {
+            images.forEach((img, i) => {
                 const col = i % cols;
                 const row = Math.floor(i / cols);
                 const x = margin + col * (cellWidth + gap);
                 const y = startY + row * (cellHeight + gap);
                 drawImage(ctx, img, x, y, cellWidth, cellHeight);
             });
-        }
-
-        function applyPortfolioLayout(ctx, margin, width, height, startY, mmToPx) {
-            const padding = mmToPx(state.density === 'minimal' ? 20 : state.density === 'balanced' ? 15 : 10);
-            const img = state.images[0];
-            if (!img) return;
-
-            const availWidth = width - padding * 2;
-            const availHeight = height - padding * 2;
-            const scale = Math.min(availWidth / img.width, availHeight / img.height);
-            const scaledWidth = img.width * scale;
-            const scaledHeight = img.height * scale;
-            const x = margin + padding + (availWidth - scaledWidth) / 2;
-            const y = startY + padding + (availHeight - scaledHeight) / 2;
-
-            drawImage(ctx, img, x, y, scaledWidth, scaledHeight);
-        }
-
-        function applyLifestyleLayout(ctx, margin, width, height, startY, mmToPx) {
-            const gap = mmToPx(4);
-            const images = state.images.slice(0, 4);
-            
-            if (images.length >= 3) {
-                drawImage(ctx, images[0], margin, startY, width * 0.5 - gap/2, height * 0.65 - gap/2);
-                drawImage(ctx, images[1], margin + width * 0.5 + gap/2, startY, width * 0.5 - gap/2, height * 0.4 - gap/2);
-                drawImage(ctx, images[2], margin + width * 0.5 + gap/2, startY + height * 0.4 + gap/2, width * 0.5 - gap/2, height * 0.25 - gap/2);
-                if (images[3]) {
-                    drawImage(ctx, images[3], margin, startY + height * 0.65 + gap/2, width, height * 0.35 - gap/2);
-                }
-            } else {
-                applyEditorialLayout(ctx, margin, width, height, startY, (mm) => mm);
-            }
         }
 
         function drawImage(ctx, imgData, x, y, width, height) {
@@ -790,6 +1083,67 @@
             ctx.restore();
         }
 
+        function displayPagesPreview() {
+            pagesPreview.innerHTML = state.pages.map((canvas, i) => {
+                const previewCanvas = document.createElement('canvas');
+                const ctx = previewCanvas.getContext('2d');
+                previewCanvas.width = 150;
+                previewCanvas.height = 150 * (canvas.height / canvas.width);
+                ctx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+                
+                return `
+                    <div class="page-preview" onclick="showFlipView(${i})">
+                        <img src="${previewCanvas.toDataURL()}" alt="Page ${i + 1}">
+                        <div class="page-number">Page ${i + 1}</div>
+                    </div>
+                `;
+            }).join('');
+            pagesPreview.style.display = 'grid';
+        }
+
+        // Flip View
+        flipViewBtn.addEventListener('click', () => showFlipView(0));
+
+        window.showFlipView = function(startPage = 0) {
+            pagesPreview.style.display = 'none';
+            magazineViewer.classList.add('active');
+            
+            const flipbook = document.getElementById('flipbook');
+            flipbook.innerHTML = state.pages.map((canvas, i) => `
+                <div class="page">
+                    <img src="${canvas.toDataURL()}" alt="Page ${i + 1}">
+                </div>
+            `).join('');
+
+            updatePageIndicator(startPage);
+        }
+
+        let currentPage = 0;
+
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                updatePageIndicator(currentPage);
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            if (currentPage < state.pages.length - 1) {
+                currentPage++;
+                updatePageIndicator(currentPage);
+            }
+        });
+
+        function updatePageIndicator(page) {
+            currentPage = page;
+            document.getElementById('pageIndicator').textContent = `Page ${page + 1} of ${state.pages.length}`;
+            
+            const pages = document.querySelectorAll('.flipbook .page');
+            pages.forEach((p, i) => {
+                p.style.display = i === page ? 'flex' : 'none';
+            });
+        }
+
         // PDF Download
         downloadBtn.addEventListener('click', async () => {
             const { jsPDF } = window.jspdf;
@@ -801,8 +1155,11 @@
                 compress: true
             });
 
-            const imgData = previewCanvas.toDataURL('image/jpeg', 1.0);
-            pdf.addImage(imgData, 'JPEG', 0, 0, size.width, size.height, '', 'FAST');
+            state.pages.forEach((canvas, i) => {
+                if (i > 0) pdf.addPage();
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                pdf.addImage(imgData, 'JPEG', 0, 0, size.width, size.height, '', 'FAST');
+            });
             
             const filename = state.title ? 
                 `${state.title.replace(/[^a-z0-9]/gi, '_')}_magazine.pdf` : 
