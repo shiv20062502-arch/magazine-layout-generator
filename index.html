@@ -179,7 +179,7 @@
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #333;
         }
 
@@ -189,7 +189,7 @@
             border: 1px solid var(--border);
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #e5e5e5;
         }
 
@@ -498,6 +498,7 @@
         // State management
         const state = {
             images: [],
+            loadedImages: [],
             style: 'fashion',
             size: 'a4',
             density: 'balanced',
@@ -563,7 +564,8 @@
                                 src: e.target.result,
                                 width: img.width,
                                 height: img.height,
-                                aspectRatio: img.width / img.height
+                                aspectRatio: img.width / img.height,
+                                imgElement: img
                             });
                             updateImageGrid();
                             updateButtons();
@@ -577,17 +579,22 @@
 
         function updateImageGrid() {
             imageGrid.innerHTML = state.images.map((img, index) => `
-                <div class="image-thumb" draggable="true" data-index="${index}">
+                <div class="image-thumb" data-index="${index}">
                     <img src="${img.src}" alt="Image ${index + 1}">
                     <button class="remove" onclick="removeImage(${index})">×</button>
                 </div>
             `).join('');
         }
 
-        function removeImage(index) {
+        window.removeImage = function(index) {
             state.images.splice(index, 1);
             updateImageGrid();
             updateButtons();
+            if (state.images.length === 0) {
+                downloadBtn.disabled = true;
+                previewCanvas.style.display = 'none';
+                emptyState.style.display = 'block';
+            }
         }
 
         function updateButtons() {
@@ -627,6 +634,8 @@
         generateBtn.addEventListener('click', generatePreview);
 
         function generatePreview() {
+            if (state.images.length === 0) return;
+
             loading.classList.add('active');
             emptyState.style.display = 'none';
             previewCanvas.style.display = 'none';
@@ -648,12 +657,11 @@
 
                 // Calculate usable area
                 const margin = mmToPx(printConfig.margin);
-                const safeZone = mmToPx(printConfig.safeZone);
                 const usableWidth = canvas.width - (margin * 2);
                 const usableHeight = canvas.height - (margin * 2);
 
                 // Apply layout based on style
-                applyLayout(ctx, margin, usableWidth, usableHeight);
+                applyLayout(ctx, margin, usableWidth, usableHeight, mmToPx);
 
                 // Add title if provided
                 if (state.title) {
@@ -677,7 +685,7 @@
             }, 500);
         }
 
-        function applyLayout(ctx, margin, width, height) {
+        function applyLayout(ctx, margin, width, height, mmToPx) {
             const images = state.images;
             if (images.length === 0) return;
 
@@ -686,21 +694,21 @@
 
             switch (state.style) {
                 case 'fashion':
-                    applyFashionLayout(ctx, margin, width, availableHeight, startY);
+                    applyFashionLayout(ctx, margin, width, availableHeight, startY, mmToPx);
                     break;
                 case 'editorial':
-                    applyEditorialLayout(ctx, margin, width, availableHeight, startY);
+                    applyEditorialLayout(ctx, margin, width, availableHeight, startY, mmToPx);
                     break;
                 case 'portfolio':
-                    applyPortfolioLayout(ctx, margin, width, availableHeight, startY);
+                    applyPortfolioLayout(ctx, margin, width, availableHeight, startY, mmToPx);
                     break;
                 case 'lifestyle':
-                    applyLifestyleLayout(ctx, margin, width, availableHeight, startY);
+                    applyLifestyleLayout(ctx, margin, width, availableHeight, startY, mmToPx);
                     break;
             }
         }
 
-        function applyFashionLayout(ctx, margin, width, height, startY) {
+        function applyFashionLayout(ctx, margin, width, height, startY, mmToPx) {
             const gap = mmToPx(state.density === 'minimal' ? 8 : state.density === 'balanced' ? 5 : 3);
             const images = state.images.slice(0, 3);
             
@@ -716,7 +724,7 @@
             }
         }
 
-        function applyEditorialLayout(ctx, margin, width, height, startY) {
+        function applyEditorialLayout(ctx, margin, width, height, startY, mmToPx) {
             const gap = mmToPx(state.density === 'minimal' ? 10 : state.density === 'balanced' ? 6 : 4);
             const cols = state.density === 'minimal' ? 2 : state.density === 'balanced' ? 2 : 3;
             const rows = Math.ceil(state.images.length / cols);
@@ -732,7 +740,7 @@
             });
         }
 
-        function applyPortfolioLayout(ctx, margin, width, height, startY) {
+        function applyPortfolioLayout(ctx, margin, width, height, startY, mmToPx) {
             const padding = mmToPx(state.density === 'minimal' ? 20 : state.density === 'balanced' ? 15 : 10);
             const img = state.images[0];
             if (!img) return;
@@ -748,7 +756,7 @@
             drawImage(ctx, img, x, y, scaledWidth, scaledHeight);
         }
 
-        function applyLifestyleLayout(ctx, margin, width, height, startY) {
+        function applyLifestyleLayout(ctx, margin, width, height, startY, mmToPx) {
             const gap = mmToPx(4);
             const images = state.images.slice(0, 4);
             
@@ -760,14 +768,14 @@
                     drawImage(ctx, images[3], margin, startY + height * 0.65 + gap/2, width, height * 0.35 - gap/2);
                 }
             } else {
-                applyEditorialLayout(ctx, margin, width, height, startY);
+                applyEditorialLayout(ctx, margin, width, height, startY, (mm) => mm);
             }
         }
 
         function drawImage(ctx, imgData, x, y, width, height) {
-            const img = new Image();
-            img.src = imgData.src;
+            if (!imgData || !imgData.imgElement) return;
             
+            const img = imgData.imgElement;
             const scale = Math.max(width / img.width, height / img.height);
             const scaledWidth = img.width * scale;
             const scaledHeight = img.height * scale;
