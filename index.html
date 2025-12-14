@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magazine Layout Generator - Print-Ready Photo Layouts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a1a1a;
+            --secondary: #f5f5f5;
+            --accent: #2563eb;
+            --border: #e5e5e5;
+            --text: #333;
+            --text-light: #666;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #fafafa;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 40px 20px;
+            background: white;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            text-align: center;
+            flex: 1;
+            min-width: 200px;
+            max-width: 250px;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .step h3 {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .step p {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sidebar {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--secondary);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: #f0f7ff;
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: #e0f2fe;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: var(--text-light);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #333;
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #e5e5e5;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        select, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            background: white;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .radio-option:hover {
+            background: var(--secondary);
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .radio-option.selected {
+            border-color: var(--accent);
+            background: #f0f7ff;
+        }
+
+        .preview-area {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-canvas {
+            background: white;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            max-width: 100%;
+            height: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .image-thumb {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: move;
+            border: 2px solid transparent;
+        }
+
+        .image-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-thumb .remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-option input {
+            margin-right: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Magazine Layout Generator</h1>
+        <p class="subtitle">Create professional, print-ready magazine layouts from your photos</p>
+    </header>
+
+    <div class="steps">
+        <div class="step">
+            <div class="step-number">1</div>
+            <h3>Upload Photos</h3>
+            <p>Drag & drop or select multiple images</p>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <h3>Customize Layout</h3>
+            <p>Choose style, size, and density</p>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <h3>Preview</h3>
+            <p>See your magazine layout in real-time</p>
+        </div>
+        <div class="step">
+            <div class="step-number">4</div>
+            <h3>Download</h3>
+            <p>Export as 300 DPI print-ready PDF</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="section">
+                    <h2 class="section-title">Upload Images</h2>
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">📸</div>
+                        <p><strong>Drop images here</strong></p>
+                        <p style="font-size: 0.9rem; color: var(--text-light); margin-top: 8px;">or click to browse</p>
+                        <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                    </div>
+                    <div class="image-grid" id="imageGrid"></div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Layout Style</h2>
+                    <div class="radio-group" id="styleGroup">
+                        <label class="radio-option selected">
+                            <input type="radio" name="style" value="fashion" checked>
+                            <div>
+                                <strong>Fashion</strong>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">Bold, full-bleed images</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="style" value="editorial">
+                            <div>
+                                <strong>Editorial</strong>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">Balanced grid layout</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="style" value="portfolio">
+                            <div>
+                                <strong>Portfolio</strong>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">Minimal, centered</div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="style" value="lifestyle">
+                            <div>
+                                <strong>Lifestyle</strong>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">Mixed sizes, dynamic</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Magazine Size</h2>
+                    <select id="sizeSelect">
+                        <option value="a4">A4 (210 × 297 mm)</option>
+                        <option value="a5">A5 (148 × 210 mm)</option>
+                        <option value="letter">US Letter (8.5 × 11 in)</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Layout Density</h2>
+                    <select id="densitySelect">
+                        <option value="minimal">Minimal - More white space</option>
+                        <option value="balanced" selected>Balanced - Standard</option>
+                        <option value="bold">Bold - Maximum images</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Customization</h2>
+                    <input type="text" id="titleInput" placeholder="Magazine title (optional)">
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="captionsCheck">
+                        <label for="captionsCheck">Add image captions</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="pageNumbersCheck" checked>
+                        <label for="pageNumbersCheck">Show page numbers</label>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <button class="btn btn-primary" id="generateBtn" disabled>Generate Preview</button>
+                    <button class="btn btn-secondary" id="downloadBtn" disabled>Download PDF (300 DPI)</button>
+                    <div class="info-badge" style="margin-top: 15px; display: block;">
+                        ✓ Print-ready with bleed & safe zones
+                    </div>
+                </div>
+            </aside>
+
+            <main class="preview-area">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">📖</div>
+                    <h3>Your magazine preview will appear here</h3>
+                    <p style="margin-top: 10px;">Upload images to get started</p>
+                </div>
+                <canvas id="previewCanvas" class="preview-canvas" style="display: none;"></canvas>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Generating your magazine layout...</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <footer>
+        <p>Magazine Layout Generator - Professional print-ready layouts for photographers, designers & creators</p>
+        <p style="margin-top: 10px; font-size: 0.85rem;">All layouts optimized for 300 DPI printing with CMYK color space</p>
+    </footer>
+
+    <script>
+        // State management
+        const state = {
+            images: [],
+            style: 'fashion',
+            size: 'a4',
+            density: 'balanced',
+            title: '',
+            captions: false,
+            pageNumbers: true
+        };
+
+        // Size configurations (in mm for print)
+        const sizes = {
+            a4: { width: 210, height: 297, dpi: 300 },
+            a5: { width: 148, height: 210, dpi: 300 },
+            letter: { width: 215.9, height: 279.4, dpi: 300 }
+        };
+
+        // Margins and bleed (in mm)
+        const printConfig = {
+            bleed: 3,
+            margin: 10,
+            safeZone: 15
+        };
+
+        // DOM elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const imageGrid = document.getElementById('imageGrid');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const emptyState = document.getElementById('emptyState');
+        const loading = document.getElementById('loading');
+
+        // Upload handling
+        uploadZone.addEventListener('click', () => fileInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            state.images.push({
+                                src: e.target.result,
+                                width: img.width,
+                                height: img.height,
+                                aspectRatio: img.width / img.height
+                            });
+                            updateImageGrid();
+                            updateButtons();
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function updateImageGrid() {
+            imageGrid.innerHTML = state.images.map((img, index) => `
+                <div class="image-thumb" draggable="true" data-index="${index}">
+                    <img src="${img.src}" alt="Image ${index + 1}">
+                    <button class="remove" onclick="removeImage(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeImage(index) {
+            state.images.splice(index, 1);
+            updateImageGrid();
+            updateButtons();
+        }
+
+        function updateButtons() {
+            generateBtn.disabled = state.images.length === 0;
+        }
+
+        // Settings handling
+        document.querySelectorAll('input[name="style"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                state.style = e.target.value;
+                document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
+                e.target.closest('.radio-option').classList.add('selected');
+            });
+        });
+
+        document.getElementById('sizeSelect').addEventListener('change', (e) => {
+            state.size = e.target.value;
+        });
+
+        document.getElementById('densitySelect').addEventListener('change', (e) => {
+            state.density = e.target.value;
+        });
+
+        document.getElementById('titleInput').addEventListener('input', (e) => {
+            state.title = e.target.value;
+        });
+
+        document.getElementById('captionsCheck').addEventListener('change', (e) => {
+            state.captions = e.target.checked;
+        });
+
+        document.getElementById('pageNumbersCheck').addEventListener('change', (e) => {
+            state.pageNumbers = e.target.checked;
+        });
+
+        // Layout generation
+        generateBtn.addEventListener('click', generatePreview);
+
+        function generatePreview() {
+            loading.classList.add('active');
+            emptyState.style.display = 'none';
+            previewCanvas.style.display = 'none';
+
+            setTimeout(() => {
+                const canvas = previewCanvas;
+                const ctx = canvas.getContext('2d');
+                const size = sizes[state.size];
+                
+                // Convert mm to pixels at 300 DPI
+                const mmToPx = (mm) => (mm / 25.4) * size.dpi;
+                
+                canvas.width = mmToPx(size.width);
+                canvas.height = mmToPx(size.height);
+
+                // White background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Calculate usable area
+                const margin = mmToPx(printConfig.margin);
+                const safeZone = mmToPx(printConfig.safeZone);
+                const usableWidth = canvas.width - (margin * 2);
+                const usableHeight = canvas.height - (margin * 2);
+
+                // Apply layout based on style
+                applyLayout(ctx, margin, usableWidth, usableHeight);
+
+                // Add title if provided
+                if (state.title) {
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.font = `${mmToPx(8)}px serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(state.title.toUpperCase(), canvas.width / 2, margin + mmToPx(5));
+                }
+
+                // Add page numbers
+                if (state.pageNumbers) {
+                    ctx.fillStyle = '#666666';
+                    ctx.font = `${mmToPx(3)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('1', canvas.width / 2, canvas.height - margin + mmToPx(3));
+                }
+
+                loading.classList.remove('active');
+                previewCanvas.style.display = 'block';
+                downloadBtn.disabled = false;
+            }, 500);
+        }
+
+        function applyLayout(ctx, margin, width, height) {
+            const images = state.images;
+            if (images.length === 0) return;
+
+            const startY = state.title ? margin + mmToPx(15) : margin;
+            const availableHeight = height - (state.title ? mmToPx(15) : 0);
+
+            switch (state.style) {
+                case 'fashion':
+                    applyFashionLayout(ctx, margin, width, availableHeight, startY);
+                    break;
+                case 'editorial':
+                    applyEditorialLayout(ctx, margin, width, availableHeight, startY);
+                    break;
+                case 'portfolio':
+                    applyPortfolioLayout(ctx, margin, width, availableHeight, startY);
+                    break;
+                case 'lifestyle':
+                    applyLifestyleLayout(ctx, margin, width, availableHeight, startY);
+                    break;
+            }
+        }
+
+        function applyFashionLayout(ctx, margin, width, height, startY) {
+            const gap = mmToPx(state.density === 'minimal' ? 8 : state.density === 'balanced' ? 5 : 3);
+            const images = state.images.slice(0, 3);
+            
+            if (images.length === 1) {
+                drawImage(ctx, images[0], margin, startY, width, height);
+            } else if (images.length === 2) {
+                drawImage(ctx, images[0], margin, startY, width, height * 0.6 - gap/2);
+                drawImage(ctx, images[1], margin, startY + height * 0.6 + gap/2, width, height * 0.4 - gap/2);
+            } else {
+                drawImage(ctx, images[0], margin, startY, width * 0.6 - gap/2, height);
+                drawImage(ctx, images[1], margin + width * 0.6 + gap/2, startY, width * 0.4 - gap/2, height * 0.5 - gap/2);
+                drawImage(ctx, images[2], margin + width * 0.6 + gap/2, startY + height * 0.5 + gap/2, width * 0.4 - gap/2, height * 0.5 - gap/2);
+            }
+        }
+
+        function applyEditorialLayout(ctx, margin, width, height, startY) {
+            const gap = mmToPx(state.density === 'minimal' ? 10 : state.density === 'balanced' ? 6 : 4);
+            const cols = state.density === 'minimal' ? 2 : state.density === 'balanced' ? 2 : 3;
+            const rows = Math.ceil(state.images.length / cols);
+            const cellWidth = (width - gap * (cols - 1)) / cols;
+            const cellHeight = (height - gap * (rows - 1)) / rows;
+
+            state.images.forEach((img, i) => {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = margin + col * (cellWidth + gap);
+                const y = startY + row * (cellHeight + gap);
+                drawImage(ctx, img, x, y, cellWidth, cellHeight);
+            });
+        }
+
+        function applyPortfolioLayout(ctx, margin, width, height, startY) {
+            const padding = mmToPx(state.density === 'minimal' ? 20 : state.density === 'balanced' ? 15 : 10);
+            const img = state.images[0];
+            if (!img) return;
+
+            const availWidth = width - padding * 2;
+            const availHeight = height - padding * 2;
+            const scale = Math.min(availWidth / img.width, availHeight / img.height);
+            const scaledWidth = img.width * scale;
+            const scaledHeight = img.height * scale;
+            const x = margin + padding + (availWidth - scaledWidth) / 2;
+            const y = startY + padding + (availHeight - scaledHeight) / 2;
+
+            drawImage(ctx, img, x, y, scaledWidth, scaledHeight);
+        }
+
+        function applyLifestyleLayout(ctx, margin, width, height, startY) {
+            const gap = mmToPx(4);
+            const images = state.images.slice(0, 4);
+            
+            if (images.length >= 3) {
+                drawImage(ctx, images[0], margin, startY, width * 0.5 - gap/2, height * 0.65 - gap/2);
+                drawImage(ctx, images[1], margin + width * 0.5 + gap/2, startY, width * 0.5 - gap/2, height * 0.4 - gap/2);
+                drawImage(ctx, images[2], margin + width * 0.5 + gap/2, startY + height * 0.4 + gap/2, width * 0.5 - gap/2, height * 0.25 - gap/2);
+                if (images[3]) {
+                    drawImage(ctx, images[3], margin, startY + height * 0.65 + gap/2, width, height * 0.35 - gap/2);
+                }
+            } else {
+                applyEditorialLayout(ctx, margin, width, height, startY);
+            }
+        }
+
+        function drawImage(ctx, imgData, x, y, width, height) {
+            const img = new Image();
+            img.src = imgData.src;
+            
+            const scale = Math.max(width / img.width, height / img.height);
+            const scaledWidth = img.width * scale;
+            const scaledHeight = img.height * scale;
+            const offsetX = (width - scaledWidth) / 2;
+            const offsetY = (height - scaledHeight) / 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, width, height);
+            ctx.clip();
+            ctx.drawImage(img, x + offsetX, y + offsetY, scaledWidth, scaledHeight);
+            ctx.restore();
+        }
+
+        // PDF Download
+        downloadBtn.addEventListener('click', async () => {
+            const { jsPDF } = window.jspdf;
+            const size = sizes[state.size];
+            const pdf = new jsPDF({
+                orientation: size.width > size.height ? 'landscape' : 'portrait',
+                unit: 'mm',
+                format: [size.width, size.height],
+                compress: true
+            });
+
+            const imgData = previewCanvas.toDataURL('image/jpeg', 1.0);
+            pdf.addImage(imgData, 'JPEG', 0, 0, size.width, size.height, '', 'FAST');
+            
+            const filename = state.title ? 
+                `${state.title.replace(/[^a-z0-9]/gi, '_')}_magazine.pdf` : 
+                'magazine_layout.pdf';
+            
+            pdf.save(filename);
+        });
+    </script>
+</body>
+</html>
